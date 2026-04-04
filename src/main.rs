@@ -1,5 +1,6 @@
 #![windows_subsystem = "windows"]
 
+use std::env;
 use std::time::Instant;
 use windows::Win32::Foundation::*;
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
@@ -9,10 +10,43 @@ use windows::Win32::UI::Shell::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 use windows::core::*;
 
+use winreg::RegKey;
+use winreg::enums::*;
+
 static mut LAST_CLICK_TIME: Option<Instant> = None;
 
 const WM_TRAYICON: u32 = WM_APP + 1;
 const TRAY_EXIT_ID: usize = 1001;
+const TRAY_AUTORUN_ID: usize = 1002;
+const APP_REGISTRY_NAME: &str = "DesktopIconTogglerApp";
+
+fn is_autorun_enabled() -> bool {
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    if let Ok(run_key) = hkcu.open_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Run") {
+        if let Ok(value) = run_key.get_value::<String, _>(APP_REGISTRY_NAME) {
+            if let Ok(exe_path) = env::current_exe() {
+                return value == exe_path.to_string_lossy().to_string();
+            }
+        }
+    }
+    false
+}
+
+fn toggle_autorun() {
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    if let Ok((run_key, _)) =
+        hkcu.create_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Run")
+    {
+        if is_autorun_enabled() {
+            let _ = run_key.delete_value(APP_REGISTRY_NAME);
+        } else {
+            if let Ok(exe_path) = env::current_exe() {
+                let _ =
+                    run_key.set_value(APP_REGISTRY_NAME, &exe_path.to_string_lossy().to_string());
+            }
+        }
+    }
+}
 
 fn toggle_icons() {
     unsafe {
@@ -32,7 +66,6 @@ fn toggle_icons() {
 
         if def_view.0 != 0 {
             let _ = SendMessageW(def_view, WM_COMMAND, WPARAM(0x7402), LPARAM(0));
-            println!(">>> Icons toggled! <<<");
         }
     }
 }
@@ -56,12 +89,30 @@ unsafe extern "system" fn wnd_proc(
                         let _ = GetCursorPos(&mut pt);
 
                         let hmenu = CreatePopupMenu().unwrap();
+
+                        let mut autorun_flags = MF_BYPOSITION | MF_STRING;
+                        if is_autorun_enabled() {
+                            autorun_flags |= MF_CHECKED;
+                        } else {
+                            autorun_flags |= MF_UNCHECKED;
+                        }
+
                         let _ = InsertMenuW(
                             hmenu,
                             0,
+                            autorun_flags,
+                            TRAY_AUTORUN_ID,
+                            w!("Run at startup"),
+                        );
+
+                        let _ = InsertMenuW(hmenu, 1, MF_BYPOSITION | MF_SEPARATOR, 0, w!(""));
+
+                        let _ = InsertMenuW(
+                            hmenu,
+                            2,
                             MF_BYPOSITION | MF_STRING,
                             TRAY_EXIT_ID,
-                            w!("Exit!"),
+                            w!("Exit"),
                         );
 
                         SetForegroundWindow(hwnd);
@@ -85,6 +136,8 @@ unsafe extern "system" fn wnd_proc(
                 let id = (wparam.0 & 0xFFFF) as usize;
                 if id == TRAY_EXIT_ID {
                     PostQuitMessage(0);
+                } else if id == TRAY_AUTORUN_ID {
+                    toggle_autorun();
                 }
                 LRESULT(0)
             }
@@ -172,7 +225,9 @@ fn main() -> Result<()> {
         );
 
         let mut tooltip = [0u16; 128];
-        let text = "Toggle icons\0".encode_utf16().collect::<Vec<_>>();
+        let text = "Double click on desktop\0"
+            .encode_utf16()
+            .collect::<Vec<_>>();
         tooltip[..text.len()].copy_from_slice(&text);
 
         let nid = NOTIFYICONDATAW {
@@ -189,8 +244,6 @@ fn main() -> Result<()> {
         Shell_NotifyIconW(NIM_ADD, &nid);
 
         let hook = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook), module, 0)?;
-
-        println!("Started");
 
         let mut msg = MSG::default();
         while GetMessageW(&mut msg, HWND(0), 0, 0).into() {

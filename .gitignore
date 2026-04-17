@@ -1,1 +1,63 @@
+# Rust build artifacts
 /target
+/settings-ui/src-tauri/target
+
+# Frontend build artifacts
+/settings-ui/dist
+
+# Distribution packages
+/dist
+
+# IDE and Editor Files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.classpath
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Qoder
+.qoder/
+
+# Node modules (Bun/NPM)
+settings-ui/node_modules/
+
+# Bun
+settings-ui/.bun/
+settings-ui/bun.lockb
+
+# Tauri
+settings-ui/src-tauri/tauri.conf.json.bak
+
+# Rust
+*.rs.bk
+*.pdb
+*.ilk
+*.lib
+*.exp
+Cargo.lock.bak
+
+# Debug builds (optional - uncomment if you don't want to track debug builds)
+# /target/debug
+# /settings-ui/src-tauri/target/debug
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/

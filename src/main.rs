@@ -1,7 +1,10 @@
 #![windows_subsystem = "windows"]
 
 use std::env;
+use std::fs;
+use std::path::PathBuf;
 use std::time::Instant;
+use serde::{Deserialize, Serialize};
 use windows::Win32::Foundation::*;
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::HiDpi::{PROCESS_PER_MONITOR_DPI_AWARE, SetProcessDpiAwareness};
@@ -13,12 +16,120 @@ use windows::core::*;
 use winreg::RegKey;
 use winreg::enums::*;
 
+mod cursor_hider;
+
 static mut LAST_CLICK_TIME: Option<Instant> = None;
 
 const WM_TRAYICON: u32 = WM_APP + 1;
 const TRAY_EXIT_ID: usize = 1001;
 const TRAY_AUTORUN_ID: usize = 1002;
 const APP_REGISTRY_NAME: &str = "DesktopIconTogglerApp";
+
+const TRAY_SETTINGS_ID: usize = 1004; // ID для кнопки "Настройки"
+const WM_RELOAD_SETTINGS: u32 = WM_APP + 2; // Секретный сигнал от UI к Ядру
+
+// Configuration structures
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct AppConfig {
+    features: FeatureFlags,
+    cursor_hider: CursorHiderConfig,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct FeatureFlags {
+    desktop_toggler: bool,
+    cursor_hider: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct CursorHiderConfig {
+    timeout_seconds: u64,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        AppConfig {
+            features: FeatureFlags {
+                desktop_toggler: true,
+                cursor_hider: false,
+            },
+            cursor_hider: CursorHiderConfig {
+                timeout_seconds: 5,
+            },
+        }
+    }
+}
+
+// Глобальное состояние (включены ли функции)
+static mut IS_DESKTOP_TOGGLER_ENABLED: bool = true;
+static mut IS_CURSOR_HIDER_ENABLED: bool = false;
+static mut CURSOR_HIDER_TIMEOUT: u64 = 5;
+
+// Get settings file path
+fn get_settings_path() -> PathBuf {
+    let app_data = env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
+    let mut path = PathBuf::from(app_data);
+    path.push("DesktopIconToggler");
+    path.push("settings.json");
+    path
+}
+
+// Create default settings file
+fn create_default_settings(path: &PathBuf) {
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let default_config = AppConfig::default();
+    if let Ok(json) = serde_json::to_string_pretty(&default_config) {
+        let _ = fs::write(path, json);
+    }
+}
+
+// Функция для чтения файла settings.json
+fn load_settings() {
+    let settings_path = get_settings_path();
+    
+    // Create default if not exists
+    if !settings_path.exists() {
+        create_default_settings(&settings_path);
+    }
+    
+    // Read and parse settings
+    match fs::read_to_string(&settings_path) {
+        Ok(contents) => {
+            match serde_json::from_str::<AppConfig>(&contents) {
+                Ok(config) => {
+                    unsafe {
+                        IS_DESKTOP_TOGGLER_ENABLED = config.features.desktop_toggler;
+                        IS_CURSOR_HIDER_ENABLED = config.features.cursor_hider;
+                        CURSOR_HIDER_TIMEOUT = config.cursor_hider.timeout_seconds;
+                    }
+                    println!("[Ядро] Настройки загружены успешно:");
+                    println!("  - Desktop Toggler: {}", config.features.desktop_toggler);
+                    println!("  - Cursor Hider: {} (timeout: {}s)", 
+                             config.features.cursor_hider, 
+                             config.cursor_hider.timeout_seconds);
+                    
+                    // Start or stop cursor hider based on settings
+                    if config.features.cursor_hider {
+                        cursor_hider::start_cursor_hider(config.cursor_hider.timeout_seconds);
+                    } else {
+                        cursor_hider::stop_cursor_hider();
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[Ядро] Ошибка парсинга настроек: {}", e);
+                    eprintln!("[Ядро] Используются настройки по умолчанию");
+                    create_default_settings(&settings_path);
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("[Ядро] Ошибка чтения файла настроек: {}", e);
+            create_default_settings(&settings_path);
+        }
+    }
+}
 
 fn is_autorun_enabled() -> bool {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
@@ -78,6 +189,12 @@ unsafe extern "system" fn wnd_proc(
 ) -> LRESULT {
     unsafe {
         match msg {
+            WM_RELOAD_SETTINGS => {
+                // Если UI прислал этот сигнал, значит пользователь нажал "Сохранить"
+                load_settings(); 
+                LRESULT(0)
+            }
+
             WM_TRAYICON => {
                 let event = lparam.0 as u32;
                 match event {
@@ -97,35 +214,22 @@ unsafe extern "system" fn wnd_proc(
                             autorun_flags |= MF_UNCHECKED;
                         }
 
-                        let _ = InsertMenuW(
-                            hmenu,
-                            0,
-                            autorun_flags,
-                            TRAY_AUTORUN_ID,
-                            w!("Run at startup"),
-                        );
-
+                        // 1. Кнопка "Настройки"
+                        let _ = InsertMenuW(hmenu, 0, MF_BYPOSITION | MF_STRING, TRAY_SETTINGS_ID, w!("Settings..."));
                         let _ = InsertMenuW(hmenu, 1, MF_BYPOSITION | MF_SEPARATOR, 0, w!(""));
 
-                        let _ = InsertMenuW(
-                            hmenu,
-                            2,
-                            MF_BYPOSITION | MF_STRING,
-                            TRAY_EXIT_ID,
-                            w!("Exit"),
-                        );
+                        // 2. Кнопка автозагрузки
+                        let mut autorun_flags = MF_BYPOSITION | MF_STRING;
+                        if is_autorun_enabled() { autorun_flags |= MF_CHECKED; } else { autorun_flags |= MF_UNCHECKED; }
+                        let _ = InsertMenuW(hmenu, 2, autorun_flags, TRAY_AUTORUN_ID, w!("Run at startup"));
+                        let _ = InsertMenuW(hmenu, 3, MF_BYPOSITION | MF_SEPARATOR, 0, w!(""));
+
+                        // 3. Кнопка выхода
+                        let _ = InsertMenuW(hmenu, 4, MF_BYPOSITION | MF_STRING, TRAY_EXIT_ID, w!("Exit"));
 
                         SetForegroundWindow(hwnd);
 
-                        let _ = TrackPopupMenu(
-                            hmenu,
-                            TPM_BOTTOMALIGN | TPM_LEFTALIGN,
-                            pt.x,
-                            pt.y,
-                            0,
-                            hwnd,
-                            None,
-                        );
+                        let _ = TrackPopupMenu(hmenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hwnd, None);
                         let _ = DestroyMenu(hmenu);
                     }
                     _ => {}
@@ -138,6 +242,20 @@ unsafe extern "system" fn wnd_proc(
                     PostQuitMessage(0);
                 } else if id == TRAY_AUTORUN_ID {
                     toggle_autorun();
+                } else if id == TRAY_SETTINGS_ID {
+                    // Launch settings UI in a separate thread
+                    std::thread::spawn(|| {
+                        if let Ok(exe_path) = env::current_exe() {
+                            if let Some(exe_dir) = exe_path.parent() {
+                                let settings_path = exe_dir.join("settings.exe");
+                                if settings_path.exists() {
+                                    let _ = std::process::Command::new(settings_path).spawn();
+                                } else {
+                                    eprintln!("[Ядро] Settings app not found at: {:?}", settings_path);
+                                }
+                            }
+                        }
+                    });
                 }
                 LRESULT(0)
             }
@@ -151,8 +269,26 @@ unsafe extern "system" fn wnd_proc(
 }
 
 unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    if code >= 0 && wparam.0 as u32 == WM_LBUTTONDOWN {
-        unsafe {
+    unsafe {
+        // If code < 0, we must pass to next hook without processing
+        if code < 0 {
+            return CallNextHookEx(HHOOK(0), code, wparam, lparam);
+        }
+        
+        // Track mouse activity for cursor hider (regardless of which features are enabled)
+        if IS_CURSOR_HIDER_ENABLED {
+            // Mouse activity detected - cursor hider thread will detect position changes
+            // This is handled by the cursor_hider module's position tracking
+        }
+        
+        // Check if desktop toggler is enabled before processing desktop clicks
+        if !IS_DESKTOP_TOGGLER_ENABLED {
+            // Desktop toggler is disabled, pass through without processing
+            return CallNextHookEx(HHOOK(0), code, wparam, lparam);
+        }
+        
+        // Process desktop icon toggler logic
+        if wparam.0 as u32 == WM_LBUTTONDOWN {
             let hook_struct = *(lparam.0 as *const MSLLHOOKSTRUCT);
             let hwnd_under_cursor = WindowFromPoint(hook_struct.pt);
 
@@ -196,6 +332,9 @@ unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) 
 
 fn main() -> Result<()> {
     unsafe {
+        // Load settings at startup
+        load_settings();
+        
         let _ = SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
         let module = GetModuleHandleW(None)?;
 

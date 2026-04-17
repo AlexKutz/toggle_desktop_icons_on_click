@@ -9,17 +9,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
-name = "desktop_icon_toggler"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "windows",
- "winreg",
- "winres",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -230,6 +219,17 @@ name = "windows_i686_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "240948bc05c5e7c6dabba28bf89d89ffce3e303022809e73deaefe4f6ec56c66"
+
+[[package]]
+name = "windows_multitool"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "windows",
+ "winreg",
+ "winres",
+]
 
 [[package]]
 name = "windows_x86_64_gnu"

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The project includes automated build scripts for Windows that compile both the main application and settings UI in one command.
+The project includes automated build scripts for Windows that compile both the main application (windows_multitool.exe) and settings UI in one command.
 
 ## Available Scripts
 
@@ -50,14 +50,14 @@ Full-featured build script with multiple options.
 **Without `-Distribute`:**
 ```
 target/release/
-├── desktop_icon_toggler.exe (471 KB)
+├── windows_multitool.exe (471 KB)
 └── settings.exe (8.6 MB)
 ```
 
 **With `-Distribute`:**
 ```
 dist/release/
-├── desktop_icon_toggler.exe (471 KB)
+├── windows_multitool.exe (471 KB)
 ├── settings.exe (8.6 MB)
 ├── icon.ico (104 KB)
 └── README.txt (0.5 KB)
@@ -105,8 +105,8 @@ If either is missing, the script will show an error and exit.
 
 ### Step 2: Main App Build
 ```
-> Building main application (desktop_icon_toggler.exe)...
-   Compiling desktop_icon_toggler v0.1.0
+> Building main application (windows_multitool.exe)...
+   Compiling windows_multitool v0.1.0
     Finished `release` profile [optimized] target(s) in 1.54s
 [OK] Main app built: ... (471.5 KB)
 ```
@@ -147,13 +147,13 @@ Distribution contents:
 ===========================================
 
 Build outputs:
-  Main app:      .../target/release/desktop_icon_toggler.exe
+  Main app:      .../target/release/windows_multitool.exe
   Settings UI:   .../target/release/settings.exe
   Distribution:  .../dist/release
 
 Ready to run:
   cd target\release
-  .\desktop_icon_toggler.exe
+  .\windows_multitool.exe
 ```
 
 ---
@@ -215,7 +215,7 @@ When using `-Distribute` flag, the script creates a ready-to-deploy package:
 
 | File | Size | Purpose |
 |------|------|---------|
-| `desktop_icon_toggler.exe` | 471 KB | Main application |
+| `windows_multitool.exe` | 471 KB | Main application |
 | `settings.exe` | 8.6 MB | Settings UI |
 | `icon.ico` | 104 KB | Application icon |
 | `README.txt` | 0.5 KB | Quick start guide |
@@ -245,14 +245,14 @@ When using `-Distribute` flag, the script creates a ready-to-deploy package:
 
 **Problem:**
 ```
-error: failed to remove file `...\desktop_icon_toggler.exe`
+error: failed to remove file `...\windows_multitool.exe`
 Access is denied. (os error 5)
 ```
 
 **Solution:**
 The application is still running. Close it first:
 ```powershell
-Stop-Process -Name "desktop_icon_toggler" -Force
+Stop-Process -Name "windows_multitool" -Force
 Stop-Process -Name "settings" -Force
 ```
 

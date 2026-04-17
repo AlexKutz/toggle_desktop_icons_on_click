@@ -1,7 +1,7 @@
 @echo off
 echo.
 echo ===============================================
-echo   Desktop Icon Toggler - Quick Build
+echo   Windows Multitool - Quick Build
 echo ===============================================
 echo.
 

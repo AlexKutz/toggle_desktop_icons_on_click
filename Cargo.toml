@@ -1,7 +1,8 @@
 [package]
-name = "desktop_icon_toggler"
+name = "windows_multitool"
 version = "0.1.0"
 edition = "2024"
+description = "A lightweight Windows utility with desktop icon toggler, cursor hider, and more system enhancements"
 
 [dependencies.windows]
 version = "0.52"

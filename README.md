@@ -1,6 +1,6 @@
-# Desktop Icon Toggler
+# Windows Multitool
 
-Toggle desktop icons visibility and manage system preferences with a lightweight Windows application.
+A lightweight Windows utility that enhances your desktop experience with multiple system tools in one application.
 
 ## Quick Start
 
@@ -22,7 +22,7 @@ Double-click: build.bat
 
 ```powershell
 cd target\release
-.\desktop_icon_toggler.exe
+.\windows_multitool.exe
 ```
 
 Right-click the tray icon → **Settings** to configure features.
@@ -31,11 +31,24 @@ Right-click the tray icon → **Settings** to configure features.
 
 ## Features
 
-- ✅ **Desktop Icon Toggler** - Double-click desktop to show/hide icons
-- ✅ **Cursor Hider** - Auto-hide cursor after inactivity
-- ✅ **Lightweight** - Only 471 KB core application
-- ✅ **Modern Settings UI** - Beautiful Tauri + React interface
-- ✅ **Zero overhead** - Disabled features consume no resources
+### ✅ Desktop Icon Toggler
+- Double-click desktop to show/hide icons
+- Quick access from system tray
+- Zero performance impact when disabled
+
+### ✅ Cursor Hider
+- Auto-hide cursor after inactivity
+- Configurable timeout (1-60 seconds)
+- Instant show on mouse movement
+
+### ✅ Lightweight Design
+- Core app: only 471 KB
+- Modern settings UI with Tauri + React
+- Disabled features consume zero resources
+
+### 🚀 Coming Soon
+- 📋 Clipboard Manager - Save, edit, and manage clipboard history
+- 🔧 More system utilities in development...
 
 ---
 
@@ -56,7 +69,7 @@ Right-click the tray icon → **Settings** to configure features.
 │   ├── src/                 # React frontend
 │   └── src-tauri/           # Tauri backend
 ├── target/release/          # Build output
-│   ├── desktop_icon_toggler.exe
+│   ├── windows_multitool.exe
 │   └── settings.exe
 ├── dist/release/            # Distribution package
 ├── Docs/                    # Documentation
@@ -68,10 +81,11 @@ Right-click the tray icon → **Settings** to configure features.
 
 ## Tech Stack
 
-- **Main App:** Pure Rust + Win32 API
+- **Core App:** Pure Rust + Win32 API (ultra-lightweight)
 - **Settings UI:** Tauri 2 + React + TypeScript
 - **Package Manager:** Bun
 - **Configuration:** JSON file in %APPDATA%
+- **Architecture:** Modular design with dynamic feature loading
 
 ---
 

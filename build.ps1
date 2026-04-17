@@ -31,7 +31,7 @@ $BuildType = if ($Release) { "release" } else { "debug" }
 
 Write-Host "" -NoNewline
 Write-Host "===========================================" -ForegroundColor Cyan
-Write-Host "  Desktop Icon Toggler - Build Script" -ForegroundColor Cyan
+Write-Host "  Windows Multitool - Build Script" -ForegroundColor Cyan
 Write-Host "===========================================" -ForegroundColor Cyan
 
 # Step 1: Clean if requested
@@ -87,7 +87,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-$MainExe = "$ProjectRoot\target\$BuildType\desktop_icon_toggler.exe"
+$MainExe = "$ProjectRoot\target\$BuildType\windows_multitool.exe"
 if (-not (Test-Path $MainExe)) {
     Write-Error-Custom "Main executable not found after build"
     exit 1
@@ -163,13 +163,18 @@ if ($Distribute) {
     }
     
     # Create README
-    $ReadmeContent = "Desktop Icon Toggler`n`n" +
+    $ReadmeContent = "Windows Multitool`n`n" +
+        "A lightweight Windows utility with multiple system tools.`n`n" +
         "Installation:`n" +
         "1. Copy all files to a permanent location`n" +
-        "2. Run desktop_icon_toggler.exe`n" +
+        "2. Run windows_multitool.exe`n" +
         "3. Right-click tray icon - Settings to configure`n`n" +
+        "Features:`n" +
+        "- Desktop Icon Toggler - Show/hide desktop icons`n" +
+        "- Cursor Hider - Auto-hide cursor after inactivity`n" +
+        "- More tools coming soon!`n`n" +
         "Files:`n" +
-        "- desktop_icon_toggler.exe - Main application (system tray)`n" +
+        "- windows_multitool.exe - Main application (system tray)`n" +
         "- settings.exe - Settings UI (launched from tray menu)`n" +
         "- icon.ico - Application icon`n`n" +
         "First Run:`n" +

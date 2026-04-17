@@ -2,16 +2,16 @@
 
 ## Overview
 
-The Desktop Icon Toggler application uses a dual-application architecture with a lightweight core and a separate settings UI. This design keeps the main application minimal while providing a modern, user-friendly configuration interface.
+Windows Multitool uses a dual-application architecture with a lightweight core and a separate settings UI. This design keeps the main application minimal while providing a modern, user-friendly configuration interface for all system tools.
 
 ## Architecture
 
 ### Two Separate Applications
 
-1. **desktop_icon_toggler.exe** (471 KB)
+1. **windows_multitool.exe** (471 KB)
    - Lightweight Win32 core application
    - Runs in system tray
-   - Handles all desktop functionality (icon toggling, cursor hiding)
+   - Handles all desktop functionality (icon toggling, cursor hiding, and more)
    - Reads settings from JSON file at startup and on-demand
    - Zero UI overhead - completely headless
 
@@ -36,7 +36,7 @@ The Desktop Icon Toggler application uses a dual-application architecture with a
 └─────────────────────┘
 
 ┌─────────────────────┐
-│ desktop_icon_toggler│
+│ windows_multitool   │
 │   (Win32 Core)      │
 │                     │
 │  5. Receive WM msg  │◄─── WM_RELOAD_SETTINGS (0x8002)
@@ -77,9 +77,11 @@ Typically: `C:\Users\[username]\AppData\Roaming\DesktopIconToggler\settings.json
 | `features.cursor_hider` | boolean | `false` | Enable/disable automatic cursor hiding |
 | `cursor_hider.timeout_seconds` | number | `5` | Seconds of inactivity before hiding cursor (1-60) |
 
+**Note:** More features will be added to the configuration as they are implemented (clipboard manager, etc.)
+
 ## Implementation Details
 
-### Main App (desktop_icon_toggler.exe)
+### Main App (windows_multitool.exe)
 
 #### 1. Settings Loading (`src/main.rs`)
 
@@ -344,7 +346,7 @@ Both executables must be in the same directory for the tray menu to launch setti
 
 ### First Run
 
-1. User runs `desktop_icon_toggler.exe`
+1. User runs `windows_multitool.exe`
 2. App checks for settings file → not found
 3. Creates default settings:
    ```json
